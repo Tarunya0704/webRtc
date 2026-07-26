@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { setJoinedState } from "@/lib/joinSession";
 
 function VideoIcon() {
   return (
@@ -52,19 +56,33 @@ function ScheduleIcon() {
 }
 
 export default function ActionButtons() {
+  const router = useRouter();
+  const [isCreating, setIsCreating] = useState(false);
+
+  async function handleNewMeeting() {
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const { meeting, participant } = await api.createInstantMeeting();
+      setJoinedState(meeting.code, { participantId: participant.id, displayName: participant.display_name });
+      router.push(`/meeting/${meeting.code}`);
+    } catch (err) {
+      console.error("Failed to create instant meeting", err);
+      window.alert("Couldn't start a meeting right now. Please try again.");
+      setIsCreating(false);
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
       <button
         type="button"
-        onClick={() =>
-          window.alert(
-            "Instant meeting creation is coming in the next phase — this button will create a live meeting and drop you straight into the room."
-          )
-        }
-        className="flex flex-col items-center justify-center gap-2 rounded-xl bg-zoom-blue px-4 py-5 text-white shadow-card transition hover:bg-zoom-blue-dark sm:col-span-1"
+        onClick={handleNewMeeting}
+        disabled={isCreating}
+        className="flex flex-col items-center justify-center gap-2 rounded-xl bg-zoom-blue px-4 py-5 text-white shadow-card transition hover:bg-zoom-blue-dark disabled:opacity-70 sm:col-span-1"
       >
         <VideoIcon />
-        <span className="text-sm font-semibold">New Meeting</span>
+        <span className="text-sm font-semibold">{isCreating ? "Starting…" : "New Meeting"}</span>
       </button>
 
       <Link

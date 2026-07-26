@@ -1,10 +1,13 @@
 import random
-from typing import List
+from datetime import datetime
+from typing import List, Optional, Tuple
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models.meeting import Meeting, MeetingStatus
+from app.models.meeting import Meeting, MeetingStatus, MeetingType
+from app.models.participant import Participant, ParticipantRole
 from app.models.user import User
 
 CODE_LENGTH = 11
@@ -60,3 +63,97 @@ def get_recent_meetings(db: Session, user: User, limit: int = 10) -> List[Meetin
         .limit(limit)
         .all()
     )
+
+
+def get_by_code(db: Session, code: str) -> Optional[Meeting]:
+    return db.query(Meeting).filter(Meeting.code == code).first()
+
+
+def create_instant_meeting(db: Session, host: User) -> Tuple[Meeting, Participant]:
+    now = datetime.utcnow()
+    meeting = Meeting(
+        code=generate_unique_code(db),
+        title="{}'s Meeting".format(host.name),
+        meeting_type=MeetingType.instant,
+        status=MeetingStatus.active,
+        host_id=host.id,
+        started_at=now,
+        created_at=now,
+    )
+    db.add(meeting)
+    db.flush()
+
+    participant = Participant(
+        meeting_id=meeting.id,
+        user_id=host.id,
+        display_name=host.name,
+        role=ParticipantRole.host,
+        joined_at=now,
+    )
+    db.add(participant)
+    db.commit()
+    db.refresh(meeting)
+    db.refresh(participant)
+    return meeting, participant
+
+
+def join_meeting(
+    db: Session, meeting: Meeting, display_name: str, user: Optional[User]
+) -> Participant:
+    if meeting.status == MeetingStatus.ended:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="This meeting has ended")
+
+    if meeting.status == MeetingStatus.scheduled:
+        meeting.status = MeetingStatus.active
+        meeting.started_at = datetime.utcnow()
+
+    role = (
+        ParticipantRole.host
+        if user is not None and user.id == meeting.host_id
+        else ParticipantRole.participant
+    )
+
+    participant = Participant(
+        meeting_id=meeting.id,
+        user_id=user.id if user else None,
+        display_name=display_name,
+        role=role,
+        joined_at=datetime.utcnow(),
+    )
+    db.add(participant)
+    db.commit()
+    db.refresh(meeting)
+    db.refresh(participant)
+    return participant
+
+
+def leave_meeting(db: Session, participant_id: int, reason: str = "left") -> None:
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    if not participant or participant.left_at is not None:
+        return
+
+    participant.left_at = datetime.utcnow()
+    participant.left_reason = reason
+    db.commit()
+
+    remaining = (
+        db.query(Participant)
+        .filter(Participant.meeting_id == participant.meeting_id, Participant.left_at.is_(None))
+        .count()
+    )
+    if remaining == 0:
+        meeting = db.query(Meeting).filter(Meeting.id == participant.meeting_id).first()
+        if meeting and meeting.status != MeetingStatus.ended:
+            meeting.status = MeetingStatus.ended
+            meeting.ended_at = datetime.utcnow()
+            db.commit()
+
+
+def end_meeting(db: Session, meeting: Meeting) -> None:
+    now = datetime.utcnow()
+    meeting.status = MeetingStatus.ended
+    meeting.ended_at = now
+    db.query(Participant).filter(
+        Participant.meeting_id == meeting.id, Participant.left_at.is_(None)
+    ).update({"left_at": now, "left_reason": "host_ended"}, synchronize_session=False)
+    db.commit()

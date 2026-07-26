@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.meeting import MeetingStatus, MeetingType
+from app.schemas.participant import ParticipantOut
 
 
 class MeetingOut(BaseModel):
@@ -30,3 +31,16 @@ class ScheduleMeetingRequest(BaseModel):
     description: Optional[str] = Field(default=None, max_length=1000)
     scheduled_at: datetime
     duration_minutes: int = Field(gt=0, le=1440)
+
+
+class JoinMeetingRequest(BaseModel):
+    display_name: str = Field(min_length=1, max_length=100)
+
+
+class JoinMeetingResponse(BaseModel):
+    meeting: MeetingOut
+    participant: ParticipantOut
+
+
+class LeaveMeetingRequest(BaseModel):
+    participant_id: int

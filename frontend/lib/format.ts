@@ -20,3 +20,15 @@ export function formatDuration(minutes: number | null): string {
   const rest = minutes % 60;
   return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
 }
+
+/** Accepts a raw 11-digit meeting code (with or without spaces) or a pasted invite link. */
+export function extractMeetingCode(input: string): string | null {
+  const trimmed = input.trim();
+  const linkMatch = trimmed.match(/\/meeting\/(\d{11})/);
+  if (linkMatch) return linkMatch[1];
+
+  const digitsOnly = trimmed.replace(/\s+/g, "");
+  if (/^\d{11}$/.test(digitsOnly)) return digitsOnly;
+
+  return null;
+}

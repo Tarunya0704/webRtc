@@ -30,3 +30,17 @@ export interface TokenResponse {
   token_type: string;
   user: User;
 }
+
+export type ParticipantRole = "host" | "participant";
+
+export interface Participant {
+  id: number;
+  display_name: string;
+  role: ParticipantRole;
+  is_muted: boolean;
+}
+
+export interface JoinMeetingResponse {
+  meeting: Meeting;
+  participant: Participant;
+}

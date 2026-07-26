@@ -1,5 +1,5 @@
 import { getStoredToken } from "@/lib/auth";
-import type { Meeting, TokenResponse, User } from "@/lib/types";
+import type { JoinMeetingResponse, Meeting, TokenResponse, User } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -11,8 +11,12 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getStoredToken();
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  { skipAuth = false }: { skipAuth?: boolean } = {}
+): Promise<T> {
+  const token = skipAuth ? null : getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
@@ -58,4 +62,31 @@ export const api = {
   upcomingMeetings: () => request<Meeting[]>("/api/meetings/upcoming"),
 
   recentMeetings: () => request<Meeting[]>("/api/meetings/recent"),
+
+  createInstantMeeting: () =>
+    request<JoinMeetingResponse>("/api/meetings/instant", { method: "POST" }),
+
+  getMeeting: (code: string) => request<Meeting>(`/api/meetings/${code}`),
+
+  // skipAuth: joining by ID/link is a guest action independent of the dashboard's
+  // default-user session — without this, every tab would auto-login as the same
+  // demo account and every joiner would incorrectly get assigned the host role.
+  joinMeeting: (code: string, displayName: string) =>
+    request<JoinMeetingResponse>(
+      `/api/meetings/${code}/join`,
+      {
+        method: "POST",
+        body: JSON.stringify({ display_name: displayName }),
+      },
+      { skipAuth: true }
+    ),
+
+  leaveMeeting: (code: string, participantId: number) =>
+    request<void>(`/api/meetings/${code}/leave`, {
+      method: "POST",
+      body: JSON.stringify({ participant_id: participantId }),
+    }),
+
+  endMeeting: (code: string) =>
+    request<void>(`/api/meetings/${code}/end`, { method: "POST" }),
 };
