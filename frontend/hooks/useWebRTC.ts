@@ -7,6 +7,7 @@ import { ICE_SERVERS, RemoteParticipant, SignalMessage } from "@/lib/webrtc";
 interface UseWebRTCOptions {
   onForceMute?: () => void;
   onRemoved?: () => void;
+  onMeetingEnded?: () => void;
 }
 
 export function useWebRTC(
@@ -169,6 +170,11 @@ export function useWebRTC(
 
       case "removed": {
         optionsRef.current.onRemoved?.();
+        break;
+      }
+
+      case "meeting-ended": {
+        optionsRef.current.onMeetingEnded?.();
         break;
       }
 

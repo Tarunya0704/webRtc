@@ -60,6 +60,11 @@ export default function MeetingRoomPage() {
       clearJoinedState(code);
       setPhase("removed");
     },
+    onMeetingEnded: () => {
+      localStream?.getTracks().forEach((t) => t.stop());
+      clearJoinedState(code);
+      setPhase("meeting-ended");
+    },
   });
 
   // Resolve entry point: already-joined (New Meeting), pending name (from /join), or fresh lobby.
@@ -201,6 +206,19 @@ export default function MeetingRoomPage() {
     router.push("/");
   }
 
+  async function handleEndMeeting() {
+    if (!window.confirm("End this meeting for everyone?")) return;
+    try {
+      await api.endMeeting(code);
+    } catch (err) {
+      console.error("Failed to end meeting", err);
+    }
+    localStream?.getTracks().forEach((t) => t.stop());
+    clearJoinedState(code);
+    setPhase("left");
+    router.push("/");
+  }
+
   const remoteParticipants = useMemo(() => Object.values(rtc.participants), [rtc.participants]);
   const isHost = participant?.role === "host";
 
@@ -336,7 +354,9 @@ export default function MeetingRoomPage() {
       </div>
 
       <Controls
-        hostControls={isHost ? <HostControls onMuteAll={() => rtc.hostMuteAll()} /> : undefined}
+        hostControls={
+          isHost ? <HostControls onMuteAll={() => rtc.hostMuteAll()} onEndMeeting={handleEndMeeting} /> : undefined
+        }
         isMuted={isMuted}
         isCameraOff={isCameraOff}
         onToggleMute={toggleMute}

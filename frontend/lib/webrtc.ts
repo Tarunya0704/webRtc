@@ -12,6 +12,7 @@ export type SignalMessage =
   | { type: "participant-left"; participant_id: number }
   | { type: "force-mute" }
   | { type: "removed" }
+  | { type: "meeting-ended" }
   | { type: "error"; message: string };
 
 export interface RosterEntry {

@@ -16,6 +16,7 @@ from app.schemas.meeting import (
 )
 from app.routers.ws_signaling import remove_participant_now
 from app.services import meeting_service
+from app.services.signaling_manager import manager as signaling_manager
 
 router = APIRouter(prefix="/api/meetings", tags=["meetings"])
 
@@ -120,7 +121,7 @@ def leave_meeting(code: str, payload: LeaveMeetingRequest, db: Session = Depends
 
 
 @router.post("/{code}/end", status_code=status.HTTP_204_NO_CONTENT)
-def end_meeting(
+async def end_meeting(
     code: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     meeting = meeting_service.get_by_code(db, code)
@@ -128,7 +129,11 @@ def end_meeting(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     if meeting.host_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the host can end this meeting")
+
+    # DB is updated first so it's the source of truth, then everyone still
+    # connected is notified/disconnected in real time over the WebSocket.
     meeting_service.end_meeting(db, meeting)
+    await signaling_manager.close_room(code, {"type": "meeting-ended"})
 
 
 @router.post("/{code}/participants/{participant_id}/remove", status_code=status.HTTP_204_NO_CONTENT)

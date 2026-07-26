@@ -104,5 +104,21 @@ class SignalingManager:
         except Exception:
             pass
 
+    async def close_room(self, code: str, message: dict, close_code: int = 1000) -> None:
+        """Notify and disconnect every live connection in a room (host ending the
+        meeting for everyone). Pops the room first so each connection's own
+        disconnect handler sees an already-empty room and skips a redundant
+        participant-left broadcast."""
+        room = self._rooms.pop(code, {})
+        for info in room.values():
+            try:
+                await info.websocket.send_json(message)
+            except Exception:
+                pass
+            try:
+                await info.websocket.close(code=close_code)
+            except Exception:
+                pass
+
 
 manager = SignalingManager()
