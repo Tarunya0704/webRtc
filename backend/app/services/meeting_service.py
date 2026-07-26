@@ -97,6 +97,59 @@ def create_instant_meeting(db: Session, host: User) -> Tuple[Meeting, Participan
     return meeting, participant
 
 
+def create_scheduled_meeting(
+    db: Session,
+    host: User,
+    title: str,
+    description: Optional[str],
+    scheduled_at: datetime,
+    duration_minutes: int,
+) -> Meeting:
+    meeting = Meeting(
+        code=generate_unique_code(db),
+        title=title,
+        description=description,
+        meeting_type=MeetingType.scheduled,
+        status=MeetingStatus.scheduled,
+        host_id=host.id,
+        scheduled_at=scheduled_at,
+        duration_minutes=duration_minutes,
+        created_at=datetime.utcnow(),
+    )
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return meeting
+
+
+def update_meeting(
+    db: Session,
+    meeting: Meeting,
+    title: Optional[str],
+    description: Optional[str],
+    scheduled_at: Optional[datetime],
+    duration_minutes: Optional[int],
+) -> Meeting:
+    if meeting.status != MeetingStatus.scheduled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only meetings that haven't started yet can be edited",
+        )
+
+    if title is not None:
+        meeting.title = title
+    if description is not None:
+        meeting.description = description
+    if scheduled_at is not None:
+        meeting.scheduled_at = scheduled_at
+    if duration_minutes is not None:
+        meeting.duration_minutes = duration_minutes
+
+    db.commit()
+    db.refresh(meeting)
+    return meeting
+
+
 def join_meeting(
     db: Session, meeting: Meeting, display_name: str, user: Optional[User]
 ) -> Participant:

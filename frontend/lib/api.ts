@@ -89,4 +89,37 @@ export const api = {
 
   endMeeting: (code: string) =>
     request<void>(`/api/meetings/${code}/end`, { method: "POST" }),
+
+  scheduleMeeting: (payload: {
+    title: string;
+    description?: string;
+    scheduled_at: string;
+    duration_minutes: number;
+  }) =>
+    request<Meeting>("/api/meetings/schedule", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateMeeting: (
+    code: string,
+    payload: Partial<{
+      title: string;
+      description: string;
+      scheduled_at: string;
+      duration_minutes: number;
+    }>
+  ) =>
+    request<Meeting>(`/api/meetings/${code}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  // Host launching their own scheduled/upcoming meeting — unlike joinMeeting, this
+  // intentionally sends the auth token so the backend assigns the host role.
+  startMeeting: (code: string, displayName: string) =>
+    request<JoinMeetingResponse>(`/api/meetings/${code}/join`, {
+      method: "POST",
+      body: JSON.stringify({ display_name: displayName }),
+    }),
 };

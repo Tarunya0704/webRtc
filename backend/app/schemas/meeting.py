@@ -33,6 +33,13 @@ class ScheduleMeetingRequest(BaseModel):
     duration_minutes: int = Field(gt=0, le=1440)
 
 
+class UpdateMeetingRequest(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    scheduled_at: Optional[datetime] = None
+    duration_minutes: Optional[int] = Field(default=None, gt=0, le=1440)
+
+
 class JoinMeetingRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=100)
 
