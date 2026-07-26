@@ -14,6 +14,7 @@ from app.schemas.meeting import (
     ScheduleMeetingRequest,
     UpdateMeetingRequest,
 )
+from app.routers.ws_signaling import remove_participant_now
 from app.services import meeting_service
 
 router = APIRouter(prefix="/api/meetings", tags=["meetings"])
@@ -128,3 +129,19 @@ def end_meeting(
     if meeting.host_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the host can end this meeting")
     meeting_service.end_meeting(db, meeting)
+
+
+@router.post("/{code}/participants/{participant_id}/remove", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_participant(
+    code: str,
+    participant_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    meeting = meeting_service.get_by_code(db, code)
+    if not meeting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+    if meeting.host_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the host can remove participants")
+
+    await remove_participant_now(code, db, participant_id)

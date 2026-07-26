@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.database import SessionLocal
 from app.models.meeting import Meeting
-from app.models.participant import Participant
+from app.models.participant import Participant, ParticipantRole
 from app.services import meeting_service
 from app.services.signaling_manager import manager
 
@@ -82,6 +82,22 @@ async def meeting_socket(websocket: WebSocket, code: str, participant_id: int = 
                     exclude_id=participant.id,
                 )
 
+            elif msg_type == "host-mute-all":
+                if participant.role != ParticipantRole.host:
+                    await websocket.send_json({"type": "error", "message": "Only the host can mute all participants"})
+                else:
+                    for entry in manager.get_roster(code, exclude_id=participant.id):
+                        if entry["role"] != ParticipantRole.host.value:
+                            await manager.send_to(code, entry["id"], {"type": "force-mute"})
+
+            elif msg_type == "host-remove":
+                if participant.role != ParticipantRole.host:
+                    await websocket.send_json({"type": "error", "message": "Only the host can remove participants"})
+                else:
+                    target = data.get("target")
+                    if target is not None:
+                        await remove_participant_now(code, db, int(target))
+
             elif msg_type == "leave":
                 break
 
@@ -92,7 +108,21 @@ async def meeting_socket(websocket: WebSocket, code: str, participant_id: int = 
         pass
     finally:
         if participant:
-            manager.disconnect(code, participant.id)
+            was_connected = manager.disconnect(code, participant.id)
             meeting_service.leave_meeting(db, participant.id, reason="left")
-            await manager.broadcast(code, {"type": "participant-left", "participant_id": participant.id})
+            if was_connected:
+                await manager.broadcast(code, {"type": "participant-left", "participant_id": participant.id})
         db.close()
+
+
+async def remove_participant_now(code: str, db, participant_id: int) -> None:
+    """Host-initiated (or REST-initiated) removal: acts immediately rather than waiting
+    for the removed client's own connection to notice it was closed and clean up after
+    itself — that path exists (see the `finally` block above) but its timing depends on
+    the client promptly completing the WebSocket close handshake, which isn't guaranteed."""
+    await manager.send_to(code, participant_id, {"type": "removed"})
+    await manager.close_connection(code, participant_id, close_code=4403)
+    was_connected = manager.disconnect(code, participant_id)
+    meeting_service.leave_meeting(db, participant_id, reason="removed_by_host")
+    if was_connected:
+        await manager.broadcast(code, {"type": "participant-left", "participant_id": participant_id})

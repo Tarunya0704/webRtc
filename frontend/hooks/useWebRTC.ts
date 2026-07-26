@@ -4,10 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useSignaling } from "@/hooks/useSignaling";
 import { ICE_SERVERS, RemoteParticipant, SignalMessage } from "@/lib/webrtc";
 
+interface UseWebRTCOptions {
+  onForceMute?: () => void;
+  onRemoved?: () => void;
+}
+
 export function useWebRTC(
   code: string | null,
   participantId: number | null,
-  localStream: MediaStream | null
+  localStream: MediaStream | null,
+  options: UseWebRTCOptions = {}
 ) {
   const [participants, setParticipants] = useState<Record<number, RemoteParticipant>>({});
   const peersRef = useRef<Record<number, RTCPeerConnection>>({});
@@ -15,6 +21,8 @@ export function useWebRTC(
   localStreamRef.current = localStream;
 
   const sendRef = useRef<(msg: Record<string, unknown>) => void>(() => {});
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   function createPeerConnection(peerId: number): RTCPeerConnection {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
@@ -154,6 +162,16 @@ export function useWebRTC(
         break;
       }
 
+      case "force-mute": {
+        optionsRef.current.onForceMute?.();
+        break;
+      }
+
+      case "removed": {
+        optionsRef.current.onRemoved?.();
+        break;
+      }
+
       default:
         break;
     }
@@ -173,11 +191,19 @@ export function useWebRTC(
     send({ type: "media-status", muted, camera_off: cameraOff });
   }
 
+  function hostMuteAll() {
+    send({ type: "host-mute-all" });
+  }
+
+  function hostRemove(targetId: number) {
+    send({ type: "host-remove", target: targetId });
+  }
+
   function leave() {
     send({ type: "leave" });
     Object.keys(peersRef.current).forEach((id) => closePeerConnection(Number(id)));
     peersRef.current = {};
   }
 
-  return { participants, connected, sendMediaStatus, leave };
+  return { participants, connected, sendMediaStatus, hostMuteAll, hostRemove, leave };
 }

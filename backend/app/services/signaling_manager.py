@@ -41,13 +41,18 @@ class SignalingManager:
             camera_off=False,
         )
 
-    def disconnect(self, code: str, participant_id: int) -> None:
+    def disconnect(self, code: str, participant_id: int) -> bool:
+        """Remove a participant from the room. Returns True if they were still present
+        (so the caller knows whether a participant-left broadcast is actually needed —
+        matters because both a host-initiated removal and the removed client's own
+        connection teardown can race to call this for the same participant)."""
         room = self._rooms.get(code)
-        if not room:
-            return
+        if not room or participant_id not in room:
+            return False
         room.pop(participant_id, None)
         if not room:
             self._rooms.pop(code, None)
+        return True
 
     def update_status(self, code: str, participant_id: int, muted: bool, camera_off: bool) -> None:
         room = self._rooms.get(code)
@@ -89,6 +94,15 @@ class SignalingManager:
             except Exception:
                 # Peer socket already gone; its own disconnect handler will clean it up.
                 pass
+
+    async def close_connection(self, code: str, participant_id: int, close_code: int = 1000) -> None:
+        room = self._rooms.get(code)
+        if not room or participant_id not in room:
+            return
+        try:
+            await room[participant_id].websocket.close(code=close_code)
+        except Exception:
+            pass
 
 
 manager = SignalingManager()

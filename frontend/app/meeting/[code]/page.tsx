@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { formatMeetingCode } from "@/lib/format";
@@ -16,8 +16,17 @@ import type { Meeting, Participant } from "@/lib/types";
 import VideoTile from "@/components/meeting/VideoTile";
 import Controls from "@/components/meeting/Controls";
 import ParticipantList from "@/components/meeting/ParticipantList";
+import HostControls from "@/components/meeting/HostControls";
 
-type RoomPhase = "checking" | "not-found" | "meeting-ended" | "lobby" | "connecting" | "in-call" | "left";
+type RoomPhase =
+  | "checking"
+  | "not-found"
+  | "meeting-ended"
+  | "lobby"
+  | "connecting"
+  | "in-call"
+  | "left"
+  | "removed";
 
 export default function MeetingRoomPage() {
   const params = useParams<{ code: string }>();
@@ -35,7 +44,23 @@ export default function MeetingRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [showParticipants, setShowParticipants] = useState(false);
 
-  const rtc = useWebRTC(phase === "in-call" ? code : null, participant?.id ?? null, localStream);
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
+  const isCameraOffRef = useRef(isCameraOff);
+  isCameraOffRef.current = isCameraOff;
+
+  const rtc = useWebRTC(phase === "in-call" ? code : null, participant?.id ?? null, localStream, {
+    onForceMute: () => {
+      setIsMuted(true);
+      localStream?.getAudioTracks().forEach((t) => (t.enabled = false));
+      rtc.sendMediaStatus(true, isCameraOffRef.current);
+    },
+    onRemoved: () => {
+      localStream?.getTracks().forEach((t) => t.stop());
+      clearJoinedState(code);
+      setPhase("removed");
+    },
+  });
 
   // Resolve entry point: already-joined (New Meeting), pending name (from /join), or fresh lobby.
   useEffect(() => {
@@ -191,6 +216,15 @@ export default function MeetingRoomPage() {
     return <CenteredMessage title="This meeting has ended" subtitle="Ask the host for a new invite link." />;
   }
 
+  if (phase === "removed") {
+    return (
+      <CenteredMessage
+        title="You were removed from the meeting"
+        subtitle="The host removed you from this meeting."
+      />
+    );
+  }
+
   if (phase === "lobby" || phase === "connecting") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-zoom-gray-900 px-4 py-10 text-white">
@@ -253,17 +287,17 @@ export default function MeetingRoomPage() {
 
   return (
     <div className="flex h-screen flex-col bg-zoom-gray-900 text-white">
-      <header className="flex items-center justify-between border-b border-zoom-gray-800 px-4 py-2.5">
-        <div>
-          <p className="text-sm font-semibold">{meeting?.title}</p>
+      <header className="flex items-center justify-between gap-3 border-b border-zoom-gray-800 px-3 py-2.5 sm:px-4">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{meeting?.title}</p>
           <p className="font-mono text-xs text-zoom-gray-400">{meeting ? formatMeetingCode(meeting.code) : ""}</p>
         </div>
         <button
           type="button"
           onClick={() => meeting && navigator.clipboard.writeText(meeting.invite_link)}
-          className="rounded-md border border-zoom-gray-700 px-3 py-1.5 text-xs font-medium text-zoom-gray-200 hover:border-zoom-blue hover:text-zoom-blue"
+          className="shrink-0 whitespace-nowrap rounded-md border border-zoom-gray-700 px-2.5 py-1.5 text-xs font-medium text-zoom-gray-200 hover:border-zoom-blue hover:text-zoom-blue sm:px-3"
         >
-          Copy Invite Link
+          Copy Link
         </button>
       </header>
 
@@ -296,11 +330,13 @@ export default function MeetingRoomPage() {
             self={{ name: displayName, muted: isMuted, isHost }}
             remoteParticipants={remoteParticipants}
             onClose={() => setShowParticipants(false)}
+            onRemove={isHost ? (targetId) => rtc.hostRemove(targetId) : undefined}
           />
         )}
       </div>
 
       <Controls
+        hostControls={isHost ? <HostControls onMuteAll={() => rtc.hostMuteAll()} /> : undefined}
         isMuted={isMuted}
         isCameraOff={isCameraOff}
         onToggleMute={toggleMute}

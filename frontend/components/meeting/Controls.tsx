@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 interface ControlsProps {
   isMuted: boolean;
   isCameraOff: boolean;
@@ -8,6 +10,7 @@ interface ControlsProps {
   onLeave: () => void;
   participantCount: number;
   onToggleParticipants?: () => void;
+  hostControls?: ReactNode;
 }
 
 function MicIcon({ off }: { off: boolean }) {
@@ -41,13 +44,14 @@ export default function Controls({
   onLeave,
   participantCount,
   onToggleParticipants,
+  hostControls,
 }: ControlsProps) {
   return (
-    <div className="flex items-center justify-center gap-3 border-t border-zoom-gray-800 bg-zoom-gray-900 px-4 py-3">
+    <div className="flex items-center justify-start gap-2 overflow-x-auto border-t border-zoom-gray-800 bg-zoom-gray-900 px-3 py-3 sm:justify-center sm:gap-3 sm:px-4">
       <button
         type="button"
         onClick={onToggleMute}
-        className={`flex h-11 w-11 items-center justify-center rounded-full transition ${
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
           isMuted ? "bg-zoom-red text-white" : "bg-zoom-gray-800 text-white hover:bg-zoom-gray-700"
         }`}
         title={isMuted ? "Unmute" : "Mute"}
@@ -58,7 +62,7 @@ export default function Controls({
       <button
         type="button"
         onClick={onToggleCamera}
-        className={`flex h-11 w-11 items-center justify-center rounded-full transition ${
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
           isCameraOff ? "bg-zoom-red text-white" : "bg-zoom-gray-800 text-white hover:bg-zoom-gray-700"
         }`}
         title={isCameraOff ? "Start Video" : "Stop Video"}
@@ -70,7 +74,7 @@ export default function Controls({
         <button
           type="button"
           onClick={onToggleParticipants}
-          className="flex h-11 items-center gap-1.5 rounded-full bg-zoom-gray-800 px-4 text-sm font-medium text-white transition hover:bg-zoom-gray-700"
+          className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-zoom-gray-800 px-4 text-sm font-medium text-white transition hover:bg-zoom-gray-700"
           title="Participants"
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -86,10 +90,12 @@ export default function Controls({
         </button>
       )}
 
+      {hostControls && <span className="shrink-0">{hostControls}</span>}
+
       <button
         type="button"
         onClick={onLeave}
-        className="ml-2 flex h-11 items-center rounded-full bg-zoom-red px-5 text-sm font-semibold text-white transition hover:bg-red-700"
+        className="ml-2 flex h-11 shrink-0 items-center rounded-full bg-zoom-red px-5 text-sm font-semibold text-white transition hover:bg-red-700"
       >
         Leave
       </button>

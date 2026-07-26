@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: zoom-clone-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./zoom_clone.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "10080"
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app
+      - key: FRONTEND_URL
+        value: https://your-frontend.vercel.app
+      - key: DEFAULT_USER_EMAIL
+        value: default@zoomclone.dev
+      - key: DEFAULT_USER_PASSWORD
+        value: DefaultPass123!
+      - key: DEFAULT_USER_NAME
+        value: Demo User
+    healthCheckPath: /api/health
+
+# Notes:
+# - SQLite lives on the container's local disk. Render's free tier has an ephemeral
+#   filesystem, so data resets on redeploy/restart — fine for a demo, not for real
+#   persistence. Attach a Render Disk (or switch to a hosted Postgres) for that.
+# - Update CORS_ORIGINS / FRONTEND_URL to your actual deployed frontend URL, and the
+#   frontend's NEXT_PUBLIC_API_URL / NEXT_PUBLIC_WS_URL to this backend's URL, before
+#   the two services will talk to each other correctly.

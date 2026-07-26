@@ -10,6 +10,7 @@ export type SignalMessage =
   | { type: "ice-candidate"; from: number; to: number; candidate: RTCIceCandidateInit }
   | { type: "media-status"; from: number; muted: boolean; camera_off: boolean }
   | { type: "participant-left"; participant_id: number }
+  | { type: "force-mute" }
   | { type: "removed" }
   | { type: "error"; message: string };
 
