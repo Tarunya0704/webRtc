@@ -8,7 +8,7 @@ import { setJoinedState } from "@/lib/joinSession";
 
 function VideoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <path
         d="M3 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
         fill="currentColor"
@@ -20,7 +20,7 @@ function VideoIcon() {
 
 function JoinIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <path
         d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
         stroke="currentColor"
@@ -40,7 +40,7 @@ function JoinIcon() {
 
 function ScheduleIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
       <rect
         x="3"
         y="5"
@@ -52,6 +52,53 @@ function ScheduleIcon() {
       />
       <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
     </svg>
+  );
+}
+
+function CircleAction({
+  icon,
+  label,
+  colorClass,
+  onClick,
+  href,
+  disabled,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  colorClass: string;
+  onClick?: () => void;
+  href?: string;
+  disabled?: boolean;
+}) {
+  const circle = (
+    <span
+      className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-card transition sm:h-[72px] sm:w-[72px] ${colorClass} ${
+        disabled ? "opacity-70" : ""
+      }`}
+    >
+      {icon}
+    </span>
+  );
+
+  const content = (
+    <div className="flex flex-col items-center gap-2">
+      {circle}
+      <span className="text-sm font-medium text-zoom-gray-800">{label}</span>
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="flex flex-col items-center">
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className="flex flex-col items-center">
+      {content}
+    </button>
   );
 }
 
@@ -74,32 +121,21 @@ export default function ActionButtons() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-      <button
-        type="button"
+    <div className="flex items-start justify-center gap-8 sm:gap-12">
+      <CircleAction
+        icon={<VideoIcon />}
+        label={isCreating ? "Starting…" : "New Meeting"}
+        colorClass="bg-orange-500 hover:bg-orange-600"
         onClick={handleNewMeeting}
         disabled={isCreating}
-        className="flex flex-col items-center justify-center gap-2 rounded-xl bg-zoom-blue px-4 py-5 text-white shadow-card transition hover:bg-zoom-blue-dark disabled:opacity-70 sm:col-span-1"
-      >
-        <VideoIcon />
-        <span className="text-sm font-semibold">{isCreating ? "Starting…" : "New Meeting"}</span>
-      </button>
-
-      <Link
-        href="/join"
-        className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zoom-gray-200 bg-white px-4 py-5 text-zoom-gray-800 shadow-card transition hover:border-zoom-blue hover:text-zoom-blue"
-      >
-        <JoinIcon />
-        <span className="text-sm font-semibold">Join Meeting</span>
-      </Link>
-
-      <Link
+      />
+      <CircleAction icon={<JoinIcon />} label="Join" colorClass="bg-zoom-blue hover:bg-zoom-blue-dark" href="/join" />
+      <CircleAction
+        icon={<ScheduleIcon />}
+        label="Schedule"
+        colorClass="bg-zoom-blue hover:bg-zoom-blue-dark"
         href="/schedule"
-        className="col-span-2 flex flex-col items-center justify-center gap-2 rounded-xl border border-zoom-gray-200 bg-white px-4 py-5 text-zoom-gray-800 shadow-card transition hover:border-zoom-blue hover:text-zoom-blue sm:col-span-1"
-      >
-        <ScheduleIcon />
-        <span className="text-sm font-semibold">Schedule</span>
-      </Link>
+      />
     </div>
   );
 }
