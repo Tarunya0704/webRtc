@@ -14,6 +14,11 @@ A functional video conferencing web app inspired by Zoom — landing dashboard, 
 /backend    FastAPI app (see backend/app for models/schemas/services/routers)
 /frontend   Next.js app (see frontend/app, components, hooks, lib)
 ```
+<img width="1470" height="882" alt="image" src="https://github.com/user-attachments/assets/fc7303c1-9171-410b-be6c-0193dc2733e3" />
+
+
+
+
 
 ## Setup
 
