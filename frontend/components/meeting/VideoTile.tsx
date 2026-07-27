@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useIsSpeaking } from "@/hooks/useIsSpeaking";
 
 interface VideoTileProps {
   name: string;
@@ -22,7 +23,13 @@ function initialsOf(name: string): string {
 
 export default function VideoTile({ name, stream, muted, cameraOff, isLocal, isHost }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const isSpeaking = useIsSpeaking(stream, muted);
 
+  // The <video> element stays mounted permanently (never conditionally unmounted) so this
+  // effect — and the srcObject it sets — survives camera on/off toggles. Swapping it in and
+  // out of the tree based on `cameraOff` used to leave a freshly-mounted <video> with no
+  // srcObject whenever `stream` itself hadn't changed identity (e.g. toggling your own
+  // camera back on, or a remote peer's stream sitting unchanged while `cameraOff` flipped).
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -30,16 +37,22 @@ export default function VideoTile({ name, stream, muted, cameraOff, isLocal, isH
   }, [stream]);
 
   return (
-    <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg bg-zoom-gray-900">
-      {!cameraOff && stream ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isLocal}
-          className="h-full w-full object-cover [transform:scaleX(-1)]"
-        />
-      ) : (
+    <div
+      className={`relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg bg-zoom-gray-900 transition-shadow ${
+        isSpeaking ? "ring-2 ring-zoom-blue shadow-[0_0_16px_rgba(45,140,255,0.65)]" : ""
+      }`}
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isLocal}
+        className={`h-full w-full object-cover [transform:scaleX(-1)] ${
+          !cameraOff && stream ? "block" : "hidden"
+        }`}
+      />
+
+      {(cameraOff || !stream) && (
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zoom-blue text-lg font-semibold text-white">
           {initialsOf(name || "?")}
         </div>
