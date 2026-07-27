@@ -22,6 +22,11 @@ A video conferencing web app I built for an SDE Fullstack assignment — the goa
 /backend    FastAPI app (models / schemas / services / routers under backend/app)
 /frontend   Next.js app (app router pages, components, hooks, lib)
 ```
+<img width="1470" height="882" alt="image" src="https://github.com/user-attachments/assets/fc7303c1-9171-410b-be6c-0193dc2733e3" />
+
+
+
+
 
 ## Running it locally
 
